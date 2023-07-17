@@ -35,7 +35,10 @@ def home(request):
         if filter_recipe:
             recipe = get_recipe(filter_recipe)
             # print(filter_recipe)
-            
+            # recipe = Recipe.objects.get(id = id)
+            new_time = datetime.now() + timedelta(seconds=120) #the modifications i wanna make
+            recipe.timeStamp = int(new_time.timestamp())
+            # recipe.save()
             cache.set(filter_recipe, recipe)
         else:
             recipe = get_recipe()
@@ -63,3 +66,33 @@ def show(request , id):
     # print_cache_contents()
     # print(cache)
     return render(request, 'show.html' , context)
+# views.py
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
+def handle_post(request):
+    if request.method == 'POST':
+        module_root = request.POST.get('module_root')
+        fpath = request.POST.get('fpath')
+        cache_root = request.POST.get('cache_root')
+        
+        # Combine module_root and fpath to form srcPath
+        src_path = f"{module_root}/{fpath}"
+
+        # Combine cache_root and fpath to form cachePath
+        cache_path = f"{cache_root}/{fpath}"
+        
+        # Create a dictionary to store in the cache
+        data = {
+            'srcPath': src_path,
+            'cachePath': cache_path,
+            'timeStamp': int((datetime.now() + timedelta(seconds=60)).timestamp())
+        }
+
+        # Set the cache key to the data dictionary
+        cache.set(src_path, data)
+
+        return JsonResponse({'status': 'success'})
+    else:
+        return JsonResponse({'status': 'invalid request'}, status=400)

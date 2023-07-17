@@ -4,6 +4,7 @@ from .views import get_recipe
 from .models import Recipe
 from datetime import datetime, timedelta
 from .RefreshHandler import clean_cache_task
+from pathlib import Path
 class TestViews(TestCase):
     def setUp(self):
         self.client = Client()
@@ -54,10 +55,35 @@ class CleanCacheTaskTest(TestCase):
         cache.set('new_recipe', new_recipe)
 
         # Run the clean_cache_task synchronously
-        clean_cache_task.now(10)
+        clean_cache_task.now(1)
 
         # Assert that the old_recipe was removed from the cache
         self.assertIsNone(cache.get('old_recipe'))
 
         # Assert that the new_recipe is still in the cache
         self.assertIsNotNone(cache.get('new_recipe'))
+
+class HandlePostTest(TestCase):
+    def test_handle_post(self):
+        client = Client()
+        module_root = '/path/to/module_root'
+        fpath = '/path/to/fpath'
+        cache_root = '/path/to/cache_root'
+        response = client.post('/handle_post/', {
+            'module_root': module_root,
+            'fpath': fpath,
+            'cache_root': cache_root,
+        })
+        self.assertEqual(response.status_code, 200)
+
+        # Form srcPath by joining module_root and fpath
+        src_path = f"{module_root}/{fpath}"
+        
+        # Check that the data has been added to the cache
+        cached_data = cache.get(src_path)
+        self.assertIsNotNone(cached_data)
+
+        # Verify the content of cached_data
+        self.assertEqual(cached_data['srcPath'], src_path)
+        self.assertEqual(cached_data['cachePath'], f"{cache_root}/{fpath}")
+        self.assertIsInstance(cached_data['timeStamp'], int)
